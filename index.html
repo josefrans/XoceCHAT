@@ -1,0 +1,1135 @@
+<!DOCTYPE html>
+<html lang="es" class="dark h-full">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NEBULA // Global P2P Web Messenger</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        nebula: {
+                            900: '#050714',
+                            800: '#0b0d26',
+                            700: '#141842',
+                            accent: '#6366f1',
+                            pink: '#ec4899',
+                            cyan: '#06b6d4',
+                            emerald: '#10b981'
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        mono: ['Fira Code', 'monospace']
+                    },
+                    animation: {
+                        'pulse-glow': 'pulseGlow 3s infinite alternate',
+                        'float': 'float 6s ease-in-out infinite'
+                    },
+                    keyframes: {
+                        pulseGlow: {
+                            '0%': { boxShadow: '0 0 15px rgba(99, 102, 241, 0.3)' },
+                            '100%': { boxShadow: '0 0 35px rgba(236, 72, 153, 0.6)' }
+                        },
+                        float: {
+                            '0%, 100%': { transform: 'translateY(0px)' },
+                            '50%': { transform: 'translateY(-6px)' }
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- PeerJS for WebRTC Global Internet P2P Connection -->
+    <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+    
+    <style>
+        .glass-panel {
+            background: rgba(13, 16, 45, 0.7);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+        
+        .glass-card {
+            background: rgba(255, 255, 255, 0.03);
+            backdrop-filter: blur(8px);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .glass-input {
+            background: rgba(8, 10, 28, 0.8);
+            border: 1px solid rgba(99, 102, 241, 0.3);
+            color: #f3f4f6;
+            transition: all 0.25s ease;
+        }
+
+        .glass-input:focus {
+            border-color: #ec4899;
+            box-shadow: 0 0 15px rgba(236, 72, 153, 0.4);
+            outline: none;
+        }
+
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: rgba(5, 7, 20, 0.5);
+        }
+        ::-webkit-scrollbar-thumb {
+            background: rgba(99, 102, 241, 0.4);
+            border-radius: 9999px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(236, 72, 153, 0.6);
+        }
+
+        .ambient-bg {
+            background: radial-gradient(circle at 10% 20%, rgba(99, 102, 241, 0.15) 0%, transparent 40%),
+                        radial-gradient(circle at 90% 80%, rgba(236, 72, 153, 0.15) 0%, transparent 40%),
+                        radial-gradient(circle at 50% 50%, rgba(6, 182, 212, 0.1) 0%, transparent 60%);
+        }
+
+        .sound-wave-bar {
+            animation: soundWave 1.2s ease-in-out infinite alternate;
+        }
+        @keyframes soundWave {
+            0% { height: 4px; }
+            100% { height: 20px; }
+        }
+    </style>
+</head>
+<body class="bg-nebula-900 text-slate-100 font-sans h-full overflow-hidden select-none ambient-bg">
+
+    <div id="app" class="h-full w-full flex flex-col md:flex-row relative">
+
+        <!-- ONBOARDING MODAL -->
+        <div id="onboardingModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md transition-opacity duration-300">
+            <div class="glass-panel w-full max-w-md p-6 rounded-3xl shadow-2xl border border-indigo-500/30 animate-float">
+                <div class="text-center mb-6">
+                    <div class="inline-flex p-3 rounded-2xl bg-gradient-to-tr from-indigo-600 to-pink-500 shadow-lg shadow-indigo-500/40 mb-3">
+                        <i data-lucide="globe-2" class="w-8 h-8 text-white"></i>
+                    </div>
+                    <h2 class="text-2xl font-bold tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 via-pink-400 to-cyan-400">NEBULA P2P CHAT</h2>
+                    <p class="text-xs text-slate-400 mt-1">Conexión Global WebRTC Sin Base de Datos Central</p>
+                </div>
+
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-xs uppercase tracking-widest text-slate-400 font-semibold mb-1">Nombre o Nombre de Usuario</label>
+                        <div class="relative">
+                            <i data-lucide="user" class="absolute left-3 top-3 w-5 h-5 text-indigo-400"></i>
+                            <input type="text" id="userInputName" maxlength="18" placeholder="Ej: CyberRider" class="w-full glass-input pl-10 pr-4 py-2.5 rounded-xl text-sm">
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs uppercase tracking-widest text-slate-400 font-semibold mb-2">Avatar de Usuario</label>
+                        <div class="grid grid-cols-5 gap-2" id="avatarGrid"></div>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs uppercase tracking-widest text-slate-400 font-semibold mb-1">Color de Aura</label>
+                        <div class="flex items-center space-x-3">
+                            <div id="colorPreview" class="w-8 h-8 rounded-full border border-white/20 shadow-md"></div>
+                            <input type="color" id="userGlowColor" value="#6366f1" class="bg-transparent border-0 cursor-pointer w-10 h-8">
+                            <span id="colorHex" class="text-xs font-mono text-slate-400">#6366f1</span>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs uppercase tracking-widest text-slate-400 font-semibold mb-1">Código de Frecuencia / Sala</label>
+                        <div class="relative">
+                            <i data-lucide="hash" class="absolute left-3 top-3 w-5 h-5 text-indigo-400"></i>
+                            <input type="text" id="userInputRoom" value="GLOBAL-ROOM-1" placeholder="Nombre de sala..." class="w-full glass-input pl-10 pr-4 py-2.5 rounded-xl text-sm font-mono uppercase">
+                        </div>
+                        <p class="text-[10px] text-slate-400 mt-1">Cualquier usuario en el mundo con este mismo código podrá conectarse a tu sala.</p>
+                    </div>
+                </div>
+
+                <button id="btnJoin" class="w-full mt-6 py-3 px-6 rounded-xl bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 text-white font-semibold shadow-lg shadow-indigo-500/30 hover:opacity-95 transition active:scale-95 flex items-center justify-center space-x-2">
+                    <span>CONECTAR AL NODO GLOBAL</span>
+                    <i data-lucide="zap" class="w-4 h-4"></i>
+                </button>
+            </div>
+        </div>
+
+        <!-- MAIN INTERFACE -->
+        <!-- SIDEBAR -->
+        <aside id="sidebar" class="w-full md:w-80 glass-panel border-r border-slate-800/60 flex flex-col justify-between z-20 transition-all duration-300 transform -translate-x-full md:translate-x-0 fixed md:relative inset-y-0 left-0">
+            <div class="p-4 border-b border-white/5 flex items-center justify-between">
+                <div class="flex items-center space-x-3">
+                    <div class="p-2 rounded-xl bg-indigo-600/30 border border-indigo-400/30 text-indigo-400">
+                        <i data-lucide="radio" class="w-6 h-6 animate-pulse"></i>
+                    </div>
+                    <div>
+                        <h1 class="font-bold tracking-wide text-sm bg-clip-text text-transparent bg-gradient-to-r from-indigo-300 to-pink-300">NEBULA P2P</h1>
+                        <span id="displayRoomName" class="text-xs font-mono text-cyan-400 flex items-center gap-1">
+                            <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping"></span>
+                            GLOBAL-ROOM-1
+                        </span>
+                    </div>
+                </div>
+                <button id="btnCloseSidebar" class="md:hidden p-2 text-slate-400 hover:text-white">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+            </div>
+
+            <!-- Shareable Room Link Box -->
+            <div class="p-3 mx-4 my-2 glass-card rounded-xl border border-indigo-500/20">
+                <span class="text-[10px] uppercase font-bold tracking-wider text-slate-400 block mb-1">Enlace directo a esta sala</span>
+                <div class="flex items-center space-x-2">
+                    <input type="text" id="shareUrlInput" readonly class="w-full bg-black/40 text-[11px] font-mono px-2 py-1.5 rounded text-indigo-300 outline-none truncate border border-white/5">
+                    <button id="btnCopyShareLink" title="Copiar Enlace P2P" class="p-1.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded transition flex-shrink-0">
+                        <i data-lucide="copy" class="w-3.5 h-3.5"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Active Nodes (Members) -->
+            <div class="flex-1 overflow-y-auto p-4 space-y-4">
+                <div class="flex items-center justify-between text-xs font-semibold uppercase tracking-wider text-slate-400">
+                    <span class="flex items-center gap-1.5">
+                        <i data-lucide="wifi" class="w-3.5 h-3.5 text-emerald-400"></i> Peers Conectados
+                    </span>
+                    <span id="memberCountBadge" class="px-2 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300 font-mono text-[10px]">1</span>
+                </div>
+
+                <div id="membersList" class="space-y-2"></div>
+            </div>
+
+            <!-- Profile & Quick Settings -->
+            <div class="p-4 border-t border-white/5 glass-card flex items-center justify-between">
+                <div class="flex items-center space-x-3 overflow-hidden">
+                    <div id="selfAvatar" class="w-9 h-9 rounded-xl flex items-center justify-center text-lg shadow-md border border-white/10 flex-shrink-0">👾</div>
+                    <div class="truncate">
+                        <p id="selfName" class="text-xs font-bold text-slate-100 truncate">Anónimo</p>
+                        <p id="selfPeerId" class="text-[10px] font-mono text-indigo-400 truncate">ID Peer: Inicializando...</p>
+                    </div>
+                </div>
+
+                <div class="flex items-center space-x-1">
+                    <button id="btnToggleAudio" title="Sonido Synth" class="p-2 rounded-xl hover:bg-white/5 text-indigo-400 hover:text-indigo-300">
+                        <i data-lucide="volume-2" id="iconAudio" class="w-4 h-4"></i>
+                    </button>
+                    <button id="btnOpenSettings" title="Editar Perfil / Sala" class="p-2 rounded-xl hover:bg-white/5 text-slate-400 hover:text-white">
+                        <i data-lucide="sliders" class="w-4 h-4"></i>
+                    </button>
+                </div>
+            </div>
+        </aside>
+
+        <!-- CHAT MAIN AREA -->
+        <main class="flex-1 flex flex-col h-full overflow-hidden relative">
+
+            <!-- Chat Header -->
+            <header class="h-16 glass-panel border-b border-white/5 px-4 flex items-center justify-between z-10">
+                <div class="flex items-center space-x-3">
+                    <button id="btnOpenSidebar" class="md:hidden p-2 text-slate-400 hover:text-white">
+                        <i data-lucide="menu" class="w-5 h-5"></i>
+                    </button>
+                    <div>
+                        <div class="flex items-center space-x-2">
+                            <h2 id="currentChannelHeader" class="font-bold text-sm tracking-wide font-mono text-indigo-300"># GLOBAL-ROOM-1</h2>
+                            <span id="p2pStatusBadge" class="px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-400 text-[10px] border border-amber-500/20 flex items-center gap-1">
+                                <span class="w-1.5 h-1.5 rounded-full bg-amber-400 animate-ping"></span> Conectando P2P...
+                            </span>
+                        </div>
+                        <p class="text-[11px] text-slate-400 flex items-center gap-1">
+                            WebRTC P2P Direct Connection (Sin Servidor de Datos)
+                        </p>
+                    </div>
+                </div>
+
+                <!-- TXT Notepad File Controls -->
+                <div class="flex items-center space-x-2">
+                    <button id="btnImportTxt" title="Cargar Bloc de Notas (.txt)" class="p-2 rounded-xl glass-card text-emerald-400 hover:bg-emerald-500/10 hover:border-emerald-500/40 text-xs flex items-center gap-1.5 px-3 transition">
+                        <i data-lucide="file-up" class="w-4 h-4"></i>
+                        <span class="hidden sm:inline font-semibold">Cargar .txt</span>
+                    </button>
+                    <input type="file" id="txtFileInput" accept=".txt,.json" class="hidden">
+
+                    <button id="btnExportTxt" title="Guardar / Exportar a Bloc de Notas (.txt)" class="p-2 rounded-xl glass-card text-cyan-400 hover:bg-cyan-500/10 hover:border-cyan-500/40 text-xs flex items-center gap-1.5 px-3 transition">
+                        <i data-lucide="file-down" class="w-4 h-4"></i>
+                        <span class="hidden sm:inline font-semibold">Guardar .txt</span>
+                    </button>
+
+                    <button id="btnClearChat" title="Limpiar Sala" class="p-2 rounded-xl glass-card text-slate-400 hover:text-rose-400 text-xs transition">
+                        <i data-lucide="trash-2" class="w-4 h-4"></i>
+                    </button>
+                </div>
+            </header>
+
+            <!-- Dynamic TXT Status Bar -->
+            <div id="txtStatusBar" class="px-4 py-1.5 bg-slate-950/80 border-b border-white/5 flex items-center justify-between text-[11px] font-mono text-slate-400">
+                <div class="flex items-center space-x-2 truncate">
+                    <i data-lucide="file-text" class="w-3.5 h-3.5 text-indigo-400 flex-shrink-0"></i>
+                    <span>Bitácora Local (.txt):</span>
+                    <span id="currentTxtFileName" class="text-indigo-300 font-semibold truncate">nebula_backup.txt</span>
+                </div>
+                <div class="flex items-center space-x-3 flex-shrink-0">
+                    <span id="txtMsgCount" class="text-cyan-400">0 mensajes</span>
+                    <span id="txtSyncIndicator" class="flex items-center gap-1 text-emerald-400">
+                        <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span> Guardado
+                    </span>
+                </div>
+            </div>
+
+            <!-- Messages Stream -->
+            <div id="chatContainer" class="flex-1 overflow-y-auto p-4 space-y-4">
+                <div class="flex justify-center my-4">
+                    <div class="glass-card px-4 py-3 rounded-2xl border border-indigo-500/20 text-center max-w-md">
+                        <p class="text-xs text-indigo-300 font-semibold flex items-center justify-center gap-2">
+                            <i data-lucide="shield-check" class="w-4 h-4 text-emerald-400"></i>
+                            Conexión P2P WebRTC Directa Activa
+                        </p>
+                        <p class="text-[11px] text-slate-400 mt-1">
+                            Comparte el link o código de sala para chatear en tiempo real con cualquier persona del mundo. Todo el historial se almacena en tu bloc de notas local (.txt).
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Typing Indicator -->
+            <div id="typingIndicator" class="px-6 py-1 text-xs text-slate-400 flex items-center gap-2 hidden">
+                <span id="typingUsersText">Un peer está escribiendo</span>
+                <div class="flex gap-1 items-center">
+                    <span class="w-1.5 h-1.5 rounded-full bg-indigo-400 animate-bounce"></span>
+                    <span class="w-1.5 h-1.5 rounded-full bg-pink-400 animate-bounce [animation-delay:0.2s]"></span>
+                    <span class="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-bounce [animation-delay:0.4s]"></span>
+                </div>
+            </div>
+
+            <!-- Attachment Preview Box -->
+            <div id="attachmentPreviewBox" class="px-4 py-2 glass-panel border-t border-white/5 flex items-center justify-between hidden">
+                <div class="flex items-center space-x-3">
+                    <img id="imgPreviewThumb" class="w-10 h-10 object-cover rounded-lg border border-white/10" src="" alt="preview">
+                    <div>
+                        <p id="imgPreviewName" class="text-xs font-semibold text-slate-200">imagen.png</p>
+                        <p id="imgPreviewSize" class="text-[10px] text-slate-400">0 KB</p>
+                    </div>
+                </div>
+                <button id="btnCancelAttachment" class="p-1 rounded-full text-slate-400 hover:text-rose-400">
+                    <i data-lucide="x-circle" class="w-5 h-5"></i>
+                </button>
+            </div>
+
+            <!-- Audio Recording Controller Panel -->
+            <div id="audioRecordPanel" class="px-4 py-3 glass-panel border-t border-rose-500/30 flex items-center justify-between hidden bg-rose-950/20">
+                <div class="flex items-center space-x-3">
+                    <div class="w-3 h-3 rounded-full bg-rose-500 animate-ping"></div>
+                    <span class="text-xs font-mono text-rose-400 font-semibold" id="recordTimer">00:00</span>
+                    <div class="flex items-center gap-1 h-5">
+                        <div class="w-1 bg-rose-500 rounded sound-wave-bar" style="animation-delay: 0.1s"></div>
+                        <div class="w-1 bg-rose-500 rounded sound-wave-bar" style="animation-delay: 0.3s"></div>
+                        <div class="w-1 bg-rose-500 rounded sound-wave-bar" style="animation-delay: 0.2s"></div>
+                        <div class="w-1 bg-rose-500 rounded sound-wave-bar" style="animation-delay: 0.4s"></div>
+                    </div>
+                </div>
+                <div class="flex items-center space-x-2">
+                    <button id="btnCancelAudio" class="px-3 py-1.5 rounded-xl text-xs bg-white/5 hover:bg-white/10 text-slate-300">Descartar</button>
+                    <button id="btnSendAudio" class="px-3 py-1.5 rounded-xl text-xs bg-rose-500 hover:bg-rose-600 text-white font-semibold shadow-lg shadow-rose-500/30">Enviar Nota de Voz</button>
+                </div>
+            </div>
+
+            <!-- CHAT INPUT BAR -->
+            <footer class="p-3 glass-panel border-t border-white/5 relative z-10">
+                <form id="chatForm" class="flex items-center space-x-2">
+                    <button type="button" id="btnEmojiToggle" class="p-2.5 rounded-xl glass-card text-slate-400 hover:text-indigo-400 transition">
+                        <i data-lucide="smile" class="w-5 h-5"></i>
+                    </button>
+
+                    <button type="button" id="btnAttachFile" class="p-2.5 rounded-xl glass-card text-slate-400 hover:text-pink-400 transition">
+                        <i data-lucide="paperclip" class="w-5 h-5"></i>
+                    </button>
+                    <input type="file" id="fileInput" accept="image/*" class="hidden">
+
+                    <button type="button" id="btnRecordAudio" class="p-2.5 rounded-xl glass-card text-slate-400 hover:text-cyan-400 transition">
+                        <i data-lucide="mic" class="w-5 h-5"></i>
+                    </button>
+
+                    <div class="flex-1 relative">
+                        <input type="text" id="msgInput" placeholder="Escribe un mensaje P2P..." autocomplete="off" class="w-full glass-input px-4 py-2.5 rounded-xl text-sm pr-10">
+                    </div>
+
+                    <button type="submit" class="p-2.5 rounded-xl bg-gradient-to-r from-indigo-500 to-pink-500 text-white font-semibold shadow-lg shadow-indigo-500/30 hover:opacity-95 transition active:scale-95 flex-shrink-0">
+                        <i data-lucide="send" class="w-5 h-5"></i>
+                    </button>
+                </form>
+
+                <!-- Emoji Popover -->
+                <div id="emojiPopover" class="absolute bottom-16 left-4 glass-panel p-3 rounded-2xl shadow-2xl border border-indigo-500/20 hidden z-30">
+                    <div class="grid grid-cols-6 gap-2 text-xl">
+                        <button class="emoji-btn hover:scale-125 transition">⚡</button>
+                        <button class="emoji-btn hover:scale-125 transition">🔥</button>
+                        <button class="emoji-btn hover:scale-125 transition">🛸</button>
+                        <button class="emoji-btn hover:scale-125 transition">💎</button>
+                        <button class="emoji-btn hover:scale-125 transition">🤖</button>
+                        <button class="emoji-btn hover:scale-125 transition">🌌</button>
+                        <button class="emoji-btn hover:scale-125 transition">👍</button>
+                        <button class="emoji-btn hover:scale-125 transition">❤️</button>
+                        <button class="emoji-btn hover:scale-125 transition">🎉</button>
+                        <button class="emoji-btn hover:scale-125 transition">🚀</button>
+                        <button class="emoji-btn hover:scale-125 transition">👀</button>
+                        <button class="emoji-btn hover:scale-125 transition">✨</button>
+                    </div>
+                </div>
+            </footer>
+        </main>
+    </div>
+
+    <!-- JAVASCRIPT LOGIC -->
+    <script>
+        // --- GLOBAL APP STATE ---
+        const state = {
+            user: {
+                id: 'peer_' + Math.random().toString(36).substr(2, 9),
+                name: 'User_' + Math.floor(1000 + Math.random() * 9000),
+                avatar: '👾',
+                color: '#6366f1'
+            },
+            room: 'GLOBAL-ROOM-1',
+            soundEnabled: true,
+            peer: null,
+            connections: new Map(), // PeerID -> DataConnection
+            activeMembers: new Map(),
+            chatHistory: [],
+            activeTxtFileName: 'nebula_backup.txt',
+            typingTimeout: null,
+            attachmentBase64: null,
+            mediaRecorder: null,
+            audioChunks: [],
+            recordStartTime: 0,
+            recordInterval: null
+        };
+
+        const AVATARS = ['👾', '🤖', '🛸', '⚡', '🌌', '🦊', '🐱', '💀', '🧠', '🔮'];
+
+        // --- SOUND EFFECTS (WEB AUDIO API) ---
+        class SoundEffects {
+            constructor() { this.ctx = null; }
+            init() { if (!this.ctx) this.ctx = new (window.AudioContext || window.webkitAudioContext)(); }
+            playSend() {
+                if (!state.soundEnabled) return;
+                this.init();
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(440, this.ctx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(880, this.ctx.currentTime + 0.12);
+                gain.gain.setValueAtTime(0.15, this.ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.12);
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+                osc.start();
+                osc.stop(this.ctx.currentTime + 0.12);
+            }
+            playReceive() {
+                if (!state.soundEnabled) return;
+                this.init();
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(600, this.ctx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(300, this.ctx.currentTime + 0.18);
+                gain.gain.setValueAtTime(0.2, this.ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.18);
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+                osc.start();
+                osc.stop(this.ctx.currentTime + 0.18);
+            }
+            playPing() {
+                if (!state.soundEnabled) return;
+                this.init();
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(523.25, this.ctx.currentTime);
+                osc.frequency.setValueAtTime(659.25, this.ctx.currentTime + 0.08);
+                gain.gain.setValueAtTime(0.1, this.ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + 0.2);
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+                osc.start();
+                osc.stop(this.ctx.currentTime + 0.2);
+            }
+        }
+        const sfx = new SoundEffects();
+
+        // --- DOM ELEMENTS ---
+        const onboardingModal = document.getElementById('onboardingModal');
+        const userInputName = document.getElementById('userInputName');
+        const userInputRoom = document.getElementById('userInputRoom');
+        const avatarGrid = document.getElementById('avatarGrid');
+        const userGlowColor = document.getElementById('userGlowColor');
+        const colorPreview = document.getElementById('colorPreview');
+        const colorHex = document.getElementById('colorHex');
+        const btnJoin = document.getElementById('btnJoin');
+
+        const sidebar = document.getElementById('sidebar');
+        const btnOpenSidebar = document.getElementById('btnOpenSidebar');
+        const btnCloseSidebar = document.getElementById('btnCloseSidebar');
+        const displayRoomName = document.getElementById('displayRoomName');
+        const currentChannelHeader = document.getElementById('currentChannelHeader');
+        const membersList = document.getElementById('membersList');
+        const memberCountBadge = document.getElementById('memberCountBadge');
+        const shareUrlInput = document.getElementById('shareUrlInput');
+        const btnCopyShareLink = document.getElementById('btnCopyShareLink');
+        const p2pStatusBadge = document.getElementById('p2pStatusBadge');
+
+        const selfAvatar = document.getElementById('selfAvatar');
+        const selfName = document.getElementById('selfName');
+        const selfPeerId = document.getElementById('selfPeerId');
+        const btnToggleAudio = document.getElementById('btnToggleAudio');
+        const iconAudio = document.getElementById('iconAudio');
+        const btnOpenSettings = document.getElementById('btnOpenSettings');
+
+        const chatContainer = document.getElementById('chatContainer');
+        const chatForm = document.getElementById('chatForm');
+        const msgInput = document.getElementById('msgInput');
+        const typingIndicator = document.getElementById('typingIndicator');
+        const typingUsersText = document.getElementById('typingUsersText');
+
+        const btnEmojiToggle = document.getElementById('btnEmojiToggle');
+        const emojiPopover = document.getElementById('emojiPopover');
+        const btnAttachFile = document.getElementById('btnAttachFile');
+        const fileInput = document.getElementById('fileInput');
+        const attachmentPreviewBox = document.getElementById('attachmentPreviewBox');
+        const imgPreviewThumb = document.getElementById('imgPreviewThumb');
+        const imgPreviewName = document.getElementById('imgPreviewName');
+        const imgPreviewSize = document.getElementById('imgPreviewSize');
+        const btnCancelAttachment = document.getElementById('btnCancelAttachment');
+
+        const btnRecordAudio = document.getElementById('btnRecordAudio');
+        const audioRecordPanel = document.getElementById('audioRecordPanel');
+        const recordTimer = document.getElementById('recordTimer');
+        const btnCancelAudio = document.getElementById('btnCancelAudio');
+        const btnSendAudio = document.getElementById('btnSendAudio');
+
+        const btnImportTxt = document.getElementById('btnImportTxt');
+        const btnExportTxt = document.getElementById('btnExportTxt');
+        const txtFileInput = document.getElementById('txtFileInput');
+        const btnClearChat = document.getElementById('btnClearChat');
+
+        // --- LOCAL STORAGE PERSISTENCE ---
+        function loadFromLocalStorage() {
+            try {
+                const stored = localStorage.getItem(`nebula_storage_txt_${state.room}`);
+                if (stored) {
+                    state.chatHistory = JSON.parse(stored);
+                    renderAllStoredMessages();
+                } else {
+                    state.chatHistory = [];
+                }
+                updateTxtStatusUI();
+            } catch (e) {
+                console.error("Error cargando LocalStorage TXT", e);
+            }
+        }
+
+        function saveToLocalStorage() {
+            try {
+                localStorage.setItem(`nebula_storage_txt_${state.room}`, JSON.stringify(state.chatHistory));
+                updateTxtStatusUI();
+            } catch (e) {
+                console.warn("Storage memory limit exceeded", e);
+            }
+        }
+
+        function updateTxtStatusUI() {
+            document.getElementById('currentTxtFileName').innerText = state.activeTxtFileName;
+            document.getElementById('txtMsgCount').innerText = `${state.chatHistory.length} mensajes`;
+        }
+
+        function renderAllStoredMessages() {
+            chatContainer.innerHTML = `
+                <div class="flex justify-center my-4">
+                    <div class="glass-card px-4 py-2 rounded-2xl border border-indigo-500/20 text-center max-w-md">
+                        <p class="text-xs text-indigo-300 font-semibold flex items-center justify-center gap-2">
+                            <i data-lucide="file-text" class="w-4 h-4 text-cyan-400"></i>
+                            Historial Local (.txt) Cargado
+                        </p>
+                    </div>
+                </div>
+            `;
+            state.chatHistory.forEach(packet => renderChatMessage(packet, packet.sender.id === state.user.id, false));
+            lucide.createIcons();
+        }
+
+        // --- BLOC DE NOTAS EXPORT / IMPORT ENGINE ---
+        function exportToTxtFile() {
+            if (state.chatHistory.length === 0) {
+                alert('No hay mensajes en el historial para exportar.');
+                return;
+            }
+
+            let txtContent = `====================================================\n` +
+                               `NEBULA P2P CHAT - BITÁCORA DE CHAT (.TXT)\n` +
+                               `Sala / Frecuencia: #${state.room}\n` +
+                               `Fecha de Exportación: ${new Date().toLocaleString()}\n` +
+                               `Total de Mensajes: ${state.chatHistory.length}\n` +
+                               `====================================================\n\n` +
+                               `--- INICIO DE REGISTRO DE CONVERSACIÓN ---\n\n`;
+
+            state.chatHistory.forEach((msg) => {
+                const time = new Date(msg.timestamp || Date.now()).toLocaleString();
+                const sender = msg.sender.name || 'Anónimo';
+                let content = msg.content || '';
+                if (msg.msgType === 'image') content = '[Imagen Adjunta] ' + content;
+                if (msg.msgType === 'audio') content = '[Nota de Voz Adjunta]';
+                txtContent += `[${time}] ${sender}: ${content}\n`;
+            });
+
+            txtContent += `\n--- DATOS DE RESTAURACIÓN ESTRUCTURAL ---\n` + JSON.stringify(state.chatHistory, null, 2);
+
+            const blob = new Blob([txtContent], { type: 'text/plain;charset=utf-8' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            const fileName = `nebula_${state.room}_${new Date().toISOString().slice(0,10)}.txt`;
+            a.href = url;
+            a.download = fileName;
+            a.click();
+            URL.revokeObjectURL(url);
+
+            state.activeTxtFileName = fileName;
+            updateTxtStatusUI();
+        }
+
+        function importFromTxtFile(file) {
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                try {
+                    const content = e.target.result;
+                    let jsonString = content;
+                    const jsonStartIndex = content.indexOf('--- DATOS DE RESTAURACIÓN ESTRUCTURAL ---');
+                    if (jsonStartIndex !== -1) {
+                        jsonString = content.substring(jsonStartIndex + '--- DATOS DE RESTAURACIÓN ESTRUCTURAL ---'.length).trim();
+                    }
+
+                    const parsedData = JSON.parse(jsonString);
+                    if (Array.isArray(parsedData)) {
+                        state.chatHistory = parsedData;
+                        state.activeTxtFileName = file.name;
+                        saveToLocalStorage();
+                        renderAllStoredMessages();
+                        alert(`¡Éxito! Se cargaron ${parsedData.length} mensajes desde ${file.name}`);
+                    } else {
+                        throw new Error('Formato no válido');
+                    }
+                } catch (err) {
+                    alert('No se pudo procesar el archivo .txt. Asegúrate de que sea una bitácora guardada desde Nebula Chat.');
+                }
+            };
+            reader.readAsText(file);
+        }
+
+        // --- GLOBAL WEBRTC P2P ENGINE (PEERJS) ---
+        function initGlobalP2PMesh() {
+            // Room ID format prefix ensures peers find each other in same frequency
+            const peerId = `nebula-${state.room.toLowerCase()}-${state.user.id}`;
+            
+            p2pStatusBadge.className = "px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-400 text-[10px] border border-amber-500/20 flex items-center gap-1";
+            p2pStatusBadge.innerHTML = `<span class="w-1.5 h-1.5 rounded-full bg-amber-400 animate-ping"></span> Conectando P2P...`;
+
+            if (state.peer) {
+                try { state.peer.destroy(); } catch (e) {}
+            }
+
+            // Using standard PeerJS global signaling server
+            state.peer = new Peer(peerId, {
+                debug: 1
+            });
+
+            state.peer.on('open', (id) => {
+                selfPeerId.innerText = `Nodo Peer: ${id.slice(-8)}`;
+                p2pStatusBadge.className = "px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 text-[10px] border border-emerald-500/20 flex items-center gap-1";
+                p2pStatusBadge.innerHTML = `<span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span> Nodo P2P Activo`;
+                
+                // Discover & connect to peers
+                broadcastPresence();
+            });
+
+            state.peer.on('connection', (conn) => {
+                setupDataConnection(conn);
+            });
+
+            state.peer.on('error', (err) => {
+                // If primary peer ID is taken, connect as client peer and discover mesh
+                if (err.type === 'unavailable-id') {
+                    const fallbackId = `nebula-${state.room.toLowerCase()}-client-${Math.random().toString(36).substr(2, 6)}`;
+                    state.peer = new Peer(fallbackId);
+                    state.peer.on('open', (id) => {
+                        selfPeerId.innerText = `Nodo Peer: ${id.slice(-8)}`;
+                        p2pStatusBadge.className = "px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 text-[10px] border border-emerald-500/20 flex items-center gap-1";
+                        p2pStatusBadge.innerHTML = `<span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span> Nodo P2P Activo`;
+                        
+                        // Connect directly to the room host peer
+                        const hostPeerId = `nebula-${state.room.toLowerCase()}-${state.user.id}`;
+                        connectToPeer(hostPeerId);
+                    });
+                    state.peer.on('connection', setupDataConnection);
+                }
+            });
+        }
+
+        function connectToPeer(targetPeerId) {
+            if (!state.peer || state.connections.has(targetPeerId)) return;
+            const conn = state.peer.connect(targetPeerId);
+            setupDataConnection(conn);
+        }
+
+        function setupDataConnection(conn) {
+            conn.on('open', () => {
+                state.connections.set(conn.peer, conn);
+                // Send profile handshake
+                conn.send({
+                    type: 'HANDSHAKE',
+                    sender: state.user
+                });
+                renderMembersList();
+            });
+
+            conn.on('data', (packet) => {
+                handleIncomingP2PPacket(packet, conn);
+            });
+
+            conn.on('close', () => {
+                state.connections.delete(conn.peer);
+                state.activeMembers.delete(conn.peer);
+                renderMembersList();
+            });
+
+            conn.on('error', () => {
+                state.connections.delete(conn.peer);
+            });
+        }
+
+        function broadcastP2PPacket(packet) {
+            packet.timestamp = Date.now();
+            packet.sender = state.user;
+
+            state.connections.forEach((conn) => {
+                if (conn.open) {
+                    conn.send(packet);
+                }
+            });
+        }
+
+        function broadcastPresence() {
+            broadcastP2PPacket({ type: 'PING' });
+        }
+
+        function handleIncomingP2PPacket(packet, conn) {
+            if (!packet) return;
+
+            if (packet.sender) {
+                state.activeMembers.set(packet.sender.id, {
+                    ...packet.sender,
+                    peerId: conn.peer,
+                    lastSeen: Date.now()
+                });
+                renderMembersList();
+            }
+
+            switch (packet.type) {
+                case 'HANDSHAKE':
+                case 'PING':
+                    // Connected peer response
+                    break;
+                case 'CHAT_MSG':
+                    state.chatHistory.push(packet);
+                    saveToLocalStorage();
+                    renderChatMessage(packet);
+                    sfx.playReceive();
+                    break;
+                case 'TYPING':
+                    handleTypingSignal(packet);
+                    break;
+            }
+        }
+
+        // --- UI & MESSAGING LOGIC ---
+        function handleJoin() {
+            const name = userInputName.value.trim() || 'User_' + Math.floor(1000 + Math.random() * 9000);
+            const room = userInputRoom.value.trim().toUpperCase() || 'GLOBAL-ROOM-1';
+
+            state.user.name = name;
+            state.room = room;
+
+            selfName.innerText = state.user.name;
+            selfAvatar.innerText = state.user.avatar;
+            selfAvatar.style.boxShadow = `0 0 15px ${state.user.color}`;
+            displayRoomName.innerText = state.room;
+            currentChannelHeader.innerText = `# ${state.room}`;
+
+            // Update URL hash for easy sharing
+            window.location.hash = state.room;
+            updateShareUrl();
+
+            onboardingModal.classList.add('opacity-0', 'pointer-events-none');
+
+            loadFromLocalStorage();
+            initGlobalP2PMesh();
+            sfx.playPing();
+        }
+
+        function updateShareUrl() {
+            const shareUrl = `${window.location.origin}${window.location.pathname}#${state.room}`;
+            shareUrlInput.value = shareUrl;
+        }
+
+        function renderMembersList() {
+            state.activeMembers.set(state.user.id, {
+                ...state.user,
+                lastSeen: Date.now()
+            });
+
+            membersList.innerHTML = '';
+            memberCountBadge.innerText = state.activeMembers.size;
+
+            state.activeMembers.forEach((member) => {
+                const isSelf = member.id === state.user.id;
+                const div = document.createElement('div');
+                div.className = 'glass-card p-2 rounded-xl flex items-center justify-between border border-white/5';
+                div.innerHTML = `
+                    <div class="flex items-center space-x-2 truncate">
+                        <div class="w-7 h-7 rounded-lg flex items-center justify-center text-xs shadow" style="box-shadow: 0 0 10px ${member.color}">
+                            ${member.avatar}
+                        </div>
+                        <span class="text-xs font-semibold text-slate-200 truncate">${escapeHTML(member.name)} ${isSelf ? '<span class="text-[10px] text-indigo-400 font-mono">(Tú)</span>' : ''}</span>
+                    </div>
+                    <span class="w-2 h-2 rounded-full bg-emerald-400 shadow-sm shadow-emerald-400"></span>
+                `;
+                membersList.appendChild(div);
+            });
+        }
+
+        function sendChatMessage(content = '', type = 'text', mediaUrl = null) {
+            if (!content && !mediaUrl) return;
+
+            const packet = {
+                type: 'CHAT_MSG',
+                msgType: type,
+                content: content,
+                mediaUrl: mediaUrl,
+                msgId: 'msg_' + Date.now(),
+                sender: state.user,
+                timestamp: Date.now()
+            };
+
+            state.chatHistory.push(packet);
+            saveToLocalStorage();
+
+            renderChatMessage(packet, true);
+            broadcastP2PPacket(packet);
+            sfx.playSend();
+
+            msgInput.value = '';
+            clearAttachment();
+        }
+
+        function renderChatMessage(packet, isSelf = false, autoScroll = true) {
+            if (!isSelf) {
+                isSelf = packet.sender.id === state.user.id;
+            }
+
+            const timeStr = new Date(packet.timestamp || Date.now()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+            const msgDiv = document.createElement('div');
+            msgDiv.className = `flex gap-3 max-w-[85%] md:max-w-[75%] ${isSelf ? 'ml-auto flex-row-reverse' : 'mr-auto'} group transition-all`;
+
+            let contentHTML = '';
+
+            if (packet.msgType === 'text') {
+                contentHTML = `<p class="text-sm leading-relaxed break-words">${escapeHTML(packet.content)}</p>`;
+            } else if (packet.msgType === 'image') {
+                contentHTML = `
+                    ${packet.content ? `<p class="text-sm leading-relaxed mb-2">${escapeHTML(packet.content)}</p>` : ''}
+                    <div class="relative rounded-xl overflow-hidden border border-white/10 group/img">
+                        <img src="${packet.mediaUrl}" class="max-w-full max-h-64 object-cover rounded-xl cursor-pointer hover:scale-105 transition duration-300" onclick="window.open('${packet.mediaUrl}', '_blank')">
+                    </div>
+                `;
+            } else if (packet.msgType === 'audio') {
+                contentHTML = `
+                    <div class="flex items-center space-x-3 py-1">
+                        <i data-lucide="mic" class="w-5 h-5 text-rose-400 animate-pulse"></i>
+                        <audio controls class="h-8 max-w-[200px] rounded-lg">
+                            <source src="${packet.mediaUrl}" type="audio/webm">
+                            Audio no soportado.
+                        </audio>
+                    </div>
+                `;
+            }
+
+            msgDiv.innerHTML = `
+                <div class="w-8 h-8 rounded-xl flex items-center justify-center text-sm shadow flex-shrink-0" style="box-shadow: 0 0 12px ${packet.sender.color}">
+                    ${packet.sender.avatar}
+                </div>
+                <div>
+                    <div class="flex items-center space-x-2 mb-1 ${isSelf ? 'justify-end' : ''}">
+                        <span class="text-xs font-bold text-slate-300">${escapeHTML(packet.sender.name)}</span>
+                        <span class="text-[10px] font-mono text-slate-400">${timeStr}</span>
+                    </div>
+                    <div class="p-3.5 rounded-2xl ${isSelf ? 'bg-gradient-to-r from-indigo-600/90 to-purple-600/90 text-white rounded-tr-none' : 'glass-panel text-slate-100 rounded-tl-none border border-white/10'} shadow-lg">
+                        ${contentHTML}
+                    </div>
+                </div>
+            `;
+
+            chatContainer.appendChild(msgDiv);
+            if (autoScroll) chatContainer.scrollTop = chatContainer.scrollHeight;
+            lucide.createIcons();
+        }
+
+        // --- TYPING INDICATORS ---
+        let typingUsers = new Map();
+
+        function emitTyping() {
+            broadcastP2PPacket({ type: 'TYPING', isTyping: true });
+        }
+
+        function handleTypingSignal(packet) {
+            if (packet.isTyping) {
+                typingUsers.set(packet.sender.id, packet.sender.name);
+            } else {
+                typingUsers.delete(packet.sender.id);
+            }
+            updateTypingUI();
+        }
+
+        function updateTypingUI() {
+            if (typingUsers.size > 0) {
+                const names = Array.from(typingUsers.values()).join(', ');
+                typingUsersText.innerText = `${names} ${typingUsers.size > 1 ? 'están' : 'está'} escribiendo...`;
+                typingIndicator.classList.remove('hidden');
+            } else {
+                typingIndicator.classList.add('hidden');
+            }
+        }
+
+        // --- ATTACHMENTS (IMAGE BASE64) ---
+        function handleFileSelect(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            if (file.size > 3 * 1024 * 1024) {
+                alert('Para transmisión P2P fluida, las imágenes deben ser menores a 3MB.');
+                return;
+            }
+
+            const reader = new FileReader();
+            reader.onload = (evt) => {
+                state.attachmentBase64 = evt.target.result;
+                imgPreviewThumb.src = state.attachmentBase64;
+                imgPreviewName.innerText = file.name;
+                imgPreviewSize.innerText = (file.size / 1024).toFixed(1) + ' KB';
+                attachmentPreviewBox.classList.remove('hidden');
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function clearAttachment() {
+            state.attachmentBase64 = null;
+            fileInput.value = '';
+            attachmentPreviewBox.classList.add('hidden');
+        }
+
+        // --- VOICE NOTE RECORDING ---
+        async function startAudioRecording() {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                state.audioChunks = [];
+                state.mediaRecorder = new MediaRecorder(stream);
+
+                state.mediaRecorder.ondataavailable = (e) => {
+                    if (e.data.size > 0) state.audioChunks.push(e.data);
+                };
+
+                state.mediaRecorder.onstop = () => {
+                    const audioBlob = new Blob(state.audioChunks, { type: 'audio/webm' });
+                    const reader = new FileReader();
+                    reader.onloadend = () => {
+                        sendChatMessage('Nota de voz', 'audio', reader.result);
+                    };
+                    reader.readAsDataURL(audioBlob);
+                    stream.getTracks().forEach(track => track.stop());
+                };
+
+                state.mediaRecorder.start();
+                audioRecordPanel.classList.remove('hidden');
+                state.recordStartTime = Date.now();
+                updateRecordTimer();
+                state.recordInterval = setInterval(updateRecordTimer, 1000);
+
+            } catch (err) {
+                alert('No se pudo acceder al micrófono para grabar nota de voz.');
+            }
+        }
+
+        function updateRecordTimer() {
+            const elapsed = Math.floor((Date.now() - state.recordStartTime) / 1000);
+            const mins = String(Math.floor(elapsed / 60)).padStart(2, '0');
+            const secs = String(elapsed % 60).padStart(2, '0');
+            recordTimer.innerText = `${mins}:${secs}`;
+        }
+
+        function stopAudioRecording(send = true) {
+            if (state.mediaRecorder && state.mediaRecorder.state !== 'inactive') {
+                if (!send) state.mediaRecorder.onstop = null;
+                state.mediaRecorder.stop();
+            }
+            clearInterval(state.recordInterval);
+            audioRecordPanel.classList.add('hidden');
+        }
+
+        // --- INITIAL SETUP & EVENT LISTENERS ---
+        window.addEventListener('DOMContentLoaded', () => {
+            lucide.createIcons();
+            renderAvatarGrid();
+            setupColorPicker();
+
+            userInputName.value = 'User_' + Math.floor(1000 + Math.random() * 9000);
+
+            // Read room from URL hash if present
+            if (window.location.hash) {
+                userInputRoom.value = window.location.hash.substring(1).toUpperCase();
+            }
+
+            setupEventListeners();
+        });
+
+        function renderAvatarGrid() {
+            avatarGrid.innerHTML = '';
+            AVATARS.forEach((av, idx) => {
+                const btn = document.createElement('button');
+                btn.type = 'button';
+                btn.className = `p-2 rounded-xl text-xl border transition flex items-center justify-center ${idx === 0 ? 'border-pink-500 bg-pink-500/20' : 'border-white/10 hover:border-white/30'}`;
+                btn.innerText = av;
+                btn.onclick = () => {
+                    document.querySelectorAll('#avatarGrid button').forEach(b => {
+                        b.classList.remove('border-pink-500', 'bg-pink-500/20');
+                        b.classList.add('border-white/10');
+                    });
+                    btn.classList.add('border-pink-500', 'bg-pink-500/20');
+                    btn.classList.remove('border-white/10');
+                    state.user.avatar = av;
+                };
+                avatarGrid.appendChild(btn);
+            });
+        }
+
+        function setupColorPicker() {
+            colorPreview.style.backgroundColor = userGlowColor.value;
+            colorHex.innerText = userGlowColor.value;
+
+            userGlowColor.addEventListener('input', (e) => {
+                colorPreview.style.backgroundColor = e.target.value;
+                colorHex.innerText = e.target.value;
+                state.user.color = e.target.value;
+            });
+        }
+
+        function setupEventListeners() {
+            btnJoin.addEventListener('click', handleJoin);
+
+            btnOpenSidebar.addEventListener('click', () => sidebar.classList.remove('-translate-x-full'));
+            btnCloseSidebar.addEventListener('click', () => sidebar.classList.add('-translate-x-full'));
+
+            btnOpenSettings.addEventListener('click', () => {
+                onboardingModal.classList.remove('opacity-0', 'pointer-events-none');
+            });
+
+            btnToggleAudio.addEventListener('click', () => {
+                state.soundEnabled = !state.soundEnabled;
+                iconAudio.setAttribute('data-lucide', state.soundEnabled ? 'volume-2' : 'volume-x');
+                btnToggleAudio.classList.toggle('text-rose-400', !state.soundEnabled);
+                lucide.createIcons();
+            });
+
+            btnCopyShareLink.addEventListener('click', () => {
+                shareUrlInput.select();
+                document.execCommand('copy');
+                alert('¡Enlace P2P copiado al portapapeles! Envíalo a cualquier persona para chatear en vivo.');
+            });
+
+            chatForm.addEventListener('submit', (e) => {
+                e.preventDefault();
+                const text = msgInput.value.trim();
+                if (state.attachmentBase64) {
+                    sendChatMessage(text, 'image', state.attachmentBase64);
+                } else if (text) {
+                    sendChatMessage(text, 'text');
+                }
+            });
+
+            msgInput.addEventListener('input', () => {
+                emitTyping();
+                clearTimeout(state.typingTimeout);
+                state.typingTimeout = setTimeout(() => {
+                    broadcastP2PPacket({ type: 'TYPING', isTyping: false });
+                }, 1500);
+            });
+
+            btnEmojiToggle.addEventListener('click', (e) => {
+                e.stopPropagation();
+                emojiPopover.classList.toggle('hidden');
+            });
+
+            document.addEventListener('click', (e) => {
+                if (!emojiPopover.contains(e.target) && e.target !== btnEmojiToggle) {
+                    emojiPopover.classList.add('hidden');
+                }
+            });
+
+            document.querySelectorAll('.emoji-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    msgInput.value += btn.innerText;
+                    emojiPopover.classList.add('hidden');
+                    msgInput.focus();
+                });
+            });
+
+            btnAttachFile.addEventListener('click', () => fileInput.click());
+            fileInput.addEventListener('change', handleFileSelect);
+            btnCancelAttachment.addEventListener('click', clearAttachment);
+
+            btnRecordAudio.addEventListener('click', startAudioRecording);
+            btnCancelAudio.addEventListener('click', () => stopAudioRecording(false));
+            btnSendAudio.addEventListener('click', () => stopAudioRecording(true));
+
+            btnExportTxt.addEventListener('click', exportToTxtFile);
+            btnImportTxt.addEventListener('click', () => txtFileInput.click());
+            txtFileInput.addEventListener('change', (e) => {
+                if (e.target.files.length > 0) {
+                    importFromTxtFile(e.target.files[0]);
+                }
+            });
+
+            btnClearChat.addEventListener('click', () => {
+                if (confirm('¿Deseas vaciar los mensajes guardados de esta sala localmente?')) {
+                    state.chatHistory = [];
+                    saveToLocalStorage();
+                    renderAllStoredMessages();
+                }
+            });
+        }
+
+        function escapeHTML(str) {
+            return str.replace(/[&<>'"]/g, 
+                tag => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[tag] || tag)
+            );
+        }
+    </script>
+</body>
+</html>
